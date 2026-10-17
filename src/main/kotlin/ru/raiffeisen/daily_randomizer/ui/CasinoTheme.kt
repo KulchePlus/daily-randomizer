@@ -11,29 +11,33 @@ import javax.swing.SwingConstants
 
 /**
  * Тема в стиле казино: зелёное сукно, золото, красная кнопка.
+ * Палитра делегирует текущей теме [AppTheme] — переключается на лету.
  */
 object CasinoTheme {
 
+    /** Текущая тема приложения. */
+    var current: AppTheme = AppTheme.CASINO
+
     // Сукно игрового стола
-    val feltDark = Color(0x0B, 0x3D, 0x24)
-    val felt = Color(0x0E, 0x51, 0x2F)
-    val feltLight = Color(0x14, 0x63, 0x3B)
+    val feltDark: Color get() = current.feltDark
+    val felt: Color get() = current.felt
+    val feltLight: Color get() = current.feltLight
     // Самый тёмный оттенок сукна — для кнопок (выделяются на фоне feltDark)
-    val feltDeepest = Color(0x06, 0x2A, 0x18)
-    val feltDeepestPressed = Color(0x04, 0x1F, 0x11)
+    val feltDeepest: Color get() = current.feltDeepest
+    val feltDeepestPressed: Color get() = current.feltDeepestPressed
 
     // Золото
-    val gold = Color(0xD4, 0xAF, 0x37)
-    val goldBright = Color(0xF5, 0xD7, 0x63)
-    val goldDark = Color(0x9A, 0x7B, 0x1E)
+    val gold: Color get() = current.gold
+    val goldBright: Color get() = current.goldBright
+    val goldDark: Color get() = current.goldDark
 
     // Красное дерево для кнопки "Крутить"
-    val red = Color(0xB3, 0x1B, 0x1B)
-    val redBright = Color(0xD9, 0x2B, 0x2B)
+    val red: Color get() = current.red
+    val redBright: Color get() = current.redBright
 
     // Тёмные панели
-    val slotWindowBg = Color(0x12, 0x12, 0x12)
-    val textLight = Color(0xF5, 0xF0, 0xE1)
+    val slotWindowBg: Color get() = current.slotWindowBg
+    val textLight: Color get() = current.textLight
 
     val titleFont = Font(Font.SERIF, Font.BOLD, 22)
     val nameFont = Font(Font.SANS_SERIF, Font.BOLD, 40)
@@ -43,12 +47,27 @@ object CasinoTheme {
     val smallButtonFont = Font(Font.SANS_SERIF, Font.BOLD, 12)
 
     // Оттенок золота в HSB для перелива имени победителя
-    const val goldHue = 0.13
+    val goldHue: Double
+        get() {
+            val hsb = Color.RGBtoHSB(current.gold.red, current.gold.green, current.gold.blue, null)
+            return hsb[0].toDouble()
+        }
 
     /**
-     * Стилизует кнопку "Крутить" как красную фишку с золотой окантовкой.
+     * Стилизует кнопку "Крутить" по теме: круглая казино-фишка или
+     * плоский прямоугольник с фирменной рамкой (Райффайзен).
      */
     fun styleSpinButton(button: JButton) {
+        when (current.chipStyle) {
+            ChipStyle.ROUND_CHIP -> styleRoundChipButton(button)
+            ChipStyle.FLAT_RECT -> styleFlatRectButton(button)
+        }
+    }
+
+    /**
+     * Круглая красная фишка с золотой окантовкой — стиль казино.
+     */
+    private fun styleRoundChipButton(button: JButton) {
         button.font = buttonFont
         button.foreground = goldBright
         button.background = red
@@ -89,6 +108,45 @@ object CasinoTheme {
                 // Текст
                 g2.font = button.font
                 g2.color = goldBright
+                val text = button.text
+                val metrics = g2.fontMetrics
+                val tx = (b.width - metrics.stringWidth(text)) / 2
+                val ty = (b.height + metrics.ascent - metrics.descent) / 2
+                g2.drawString(text, tx, ty)
+            }
+        })
+    }
+
+    /**
+     * Плоский прямоугольник с толстой жёлтой рамкой — фирменный стиль Райффайзена:
+     * строгая графика, при нажатии заливка жёлтым с тёмным текстом.
+     */
+    private fun styleFlatRectButton(button: JButton) {
+        button.font = buttonFont
+        button.foreground = gold
+        button.background = red
+        button.isContentAreaFilled = false
+        button.isFocusPainted = false
+        button.isOpaque = false
+        button.border = null
+        button.preferredSize = java.awt.Dimension(220, 60)
+        button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
+            override fun paint(g: Graphics, c: javax.swing.JComponent) {
+                val g2 = g as Graphics2D
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                val b = c.bounds
+                val pressed = (c as JButton).model.isPressed
+                // Фон: тёмно-серый, при нажатии — фирменный жёлтый
+                g2.color = if (pressed) gold else current.red
+                g2.fillRect(0, 0, b.width - 1, b.height - 1)
+                // Толстая жёлтая рамка
+                g2.color = gold
+                g2.stroke = java.awt.BasicStroke(3f)
+                g2.drawRect(1, 1, b.width - 3, b.height - 3)
+                // Текст: жёлтый на тёмном, тёмный на жёлтом (при нажатии)
+                g2.font = button.font
+                g2.color = if (pressed) current.feltDark else if ((c as JButton).model.isRollover) goldBright else gold
                 val text = button.text
                 val metrics = g2.fontMetrics
                 val tx = (b.width - metrics.stringWidth(text)) / 2
@@ -141,6 +199,7 @@ object CasinoTheme {
 
     /**
      * Стилизует окошко с именем как дисплей игрового автомата.
+     * Толщина рамки — по теме: 3px (казино) или 1px (Райффайзен).
      */
     fun styleSlotWindow(label: JLabel) {
         label.font = nameFont
@@ -149,7 +208,7 @@ object CasinoTheme {
         label.isOpaque = true
         label.horizontalAlignment = SwingConstants.CENTER
         label.border = javax.swing.BorderFactory.createCompoundBorder(
-            javax.swing.BorderFactory.createLineBorder(gold, 3),
+            javax.swing.BorderFactory.createLineBorder(gold, current.slotBorderThickness),
             javax.swing.BorderFactory.createEmptyBorder(24, 24, 24, 24),
         )
     }

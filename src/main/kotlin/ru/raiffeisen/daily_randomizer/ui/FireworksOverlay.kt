@@ -46,11 +46,17 @@ class FireworksOverlay : JComponent() {
 
     private fun spawnFireworks(): List<Firework> {
         val random = java.util.Random()
+        // Цвета частиц — по теме: у казино случайный HSB, у Райффайзена фирменные жёлто-белые
+        val themeColors = CasinoTheme.current.fireworksColors
         return List(FIREWORK_COUNT) {
             Firework(
                 x = random.nextDouble() * 0.8 + 0.1,
                 y = random.nextDouble() * 0.6 + 0.1,
-                color = Color.getHSBColor(random.nextFloat(), 0.85f, 1.0f),
+                color = if (themeColors.isNotEmpty()) {
+                    themeColors[random.nextInt(themeColors.size)]
+                } else {
+                    Color.getHSBColor(random.nextFloat(), 0.85f, 1.0f)
+                },
                 particles = List(PARTICLE_COUNT) {
                     val angle = random.nextDouble() * 2 * Math.PI
                     val speed = random.nextDouble() * 0.6 + 0.4

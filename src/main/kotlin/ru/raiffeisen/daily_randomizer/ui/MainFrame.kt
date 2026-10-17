@@ -34,18 +34,37 @@ class MainFrame(
         setSize(560, 400)
         setLocationRelativeTo(null)
 
-        // Весь фон окна — сукно; кнопка настроек встроена в общий фрейм
+        // Листенеры регистрируются ОДИН раз: buildContent() вызывается при каждой
+        // смене темы, а кнопки — поля. Повторный addActionListener накапливал бы
+        // листенеры (N смен темы → N диалогов предупреждения).
+        spinButton.addActionListener { onSpinClicked() }
+        conductButton.addActionListener { onConductClicked() }
+
+        buildContent()
+
+        // Салют поверх всего окна: glass pane не перехватывает клики
+        rootPane.glassPane = fireworksOverlay
+    }
+
+    /**
+     * Строит всё содержимое окна. Вызывается из init и при смене темы
+     * (onThemeChanged) — пересоздаёт компоненты с новой палитрой.
+     */
+    private fun buildContent() {
+        // Пересоздаём барабан: в нём кэшируется состояние отрисовки
+        slotReel.setPlaceholder(lastWinner?.let { "«$it» провёл дейли. Нажми «Крутить»" } ?: "Нажми «Крутить»")
+
+        contentPane.removeAll()
         contentPane.layout = BorderLayout()
         val root = FeltBackgroundPanel(BorderLayout())
         contentPane.add(root, BorderLayout.CENTER)
         root.add(createSettingsCorner(), BorderLayout.NORTH)
         root.add(createCenterPanel(), BorderLayout.CENTER)
 
-        // Салют поверх всего окна: glass pane не перехватывает клики
-        rootPane.glassPane = fireworksOverlay
-
-        slotReel.setPlaceholder("Нажми «Крутить»")
+        slotReel.setPlaceholder(lastWinner?.let { "«$it» провёл дейли. Нажми «Крутить»" } ?: "Нажми «Крутить»")
         conductButton.isVisible = false
+        contentPane.revalidate()
+        contentPane.repaint()
     }
 
     private fun createSettingsCorner(): JPanel {
@@ -53,19 +72,26 @@ class MainFrame(
             CasinoTheme.styleSmallButton(this)
             addActionListener { openSettings() }
         }
-        return JPanel(BorderLayout()).apply {
+        val corner = JPanel(BorderLayout()).apply {
             isOpaque = false
             border = BorderFactory.createEmptyBorder(10, 10, 0, 10)
             add(settingsButton, BorderLayout.EAST)
         }
+        // Логотип слева в углу — только в темах, где он включён
+        if (CasinoTheme.current.showLogo) {
+            val logo = RaifLogoComponent()
+            val logoWrap = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                add(logo, BorderLayout.WEST)
+            }
+            corner.add(logoWrap, BorderLayout.WEST)
+        }
+        return corner
     }
 
     private fun createCenterPanel(): JPanel {
         CasinoTheme.styleSpinButton(spinButton)
-        spinButton.addActionListener { onSpinClicked() }
-
         CasinoTheme.styleSmallButton(conductButton)
-        conductButton.addActionListener { onConductClicked() }
 
         val panel = FeltBackgroundPanel(GridBagLayout())
         val constraints = GridBagConstraints().apply {
@@ -145,6 +171,6 @@ class MainFrame(
     private fun openSettings() {
         spinAnimator.stop()
         spinButton.isEnabled = true
-        SettingsDialog(this, participantService).isVisible = true
+        SettingsDialog(this, participantService, onThemeChanged = { buildContent() }).isVisible = true
     }
 }

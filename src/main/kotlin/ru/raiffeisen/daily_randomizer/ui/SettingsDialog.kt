@@ -37,6 +37,7 @@ import javax.swing.UIManager
 class SettingsDialog(
     owner: Window,
     private val participantService: ParticipantService,
+    private val onThemeChanged: () -> Unit = {},
 ) : JDialog(owner, "Настройки", ModalityType.APPLICATION_MODAL) {
 
     private companion object {
@@ -54,6 +55,33 @@ class SettingsDialog(
 
     init {
         layout = BorderLayout()
+
+        // Листенеры регистрируются ОДИН раз: refreshTheme() пересоздаёт содержимое
+        // при каждой смене темы, а поля — одни и те же. Повторная регистрация
+        // накапливала бы листенеры (N смен темы → N обработчиков клика).
+        nameField.addActionListener { onAdd() }
+        list.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(event: MouseEvent) {
+                val index = list.locationToIndex(event.point)
+                if (index < 0) return
+                val participant = listModel.get(index) ?: return
+                val cellBounds = list.getCellBounds(index, index) ?: return
+                val clickX = event.point.x - cellBounds.x
+                if (clickX <= CHECKBOX_ZONE_WIDTH) {
+                    participantService.setInPool(participant.name, !participant.inPool)
+                    reloadParticipants()
+                }
+            }
+        })
+
+        buildContent()
+    }
+
+    /**
+     * Строит всё содержимое диалога. Вызывается из init и при смене темы
+     * (refreshTheme) — пересоздаёт компоненты с новой палитрой.
+     */
+    private fun buildContent() {
         contentPane.background = CasinoTheme.feltDark
 
         // Свои вкладки на кнопках + CardLayout: Aqua (macOS) рисует JTabbedPane
@@ -154,16 +182,87 @@ class SettingsDialog(
     }
 
     /**
-     * Вкладка «Тема»: пока заглушка — здесь будет выбор темы приложения.
+     * Вкладка «Тема»: плитки тем — картинка-превью + название снизу.
+     * Клик по плитке переключает тему приложения на лету.
      */
     private fun createThemeTab(): JPanel {
         val tab = JPanel(BorderLayout())
         tab.isOpaque = false
-        val label = JLabel("Выбор темы — скоро", SwingConstants.CENTER)
-        label.foreground = CasinoTheme.gold
-        label.font = CasinoTheme.buttonFont
-        tab.add(label, BorderLayout.CENTER)
+
+        val tilesPanel = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 16, 16)).apply {
+            isOpaque = false
+            border = BorderFactory.createEmptyBorder(12, 12, 12, 12)
+        }
+
+        AppTheme.ALL.forEach { theme ->
+            tilesPanel.add(createThemeTile(theme) {
+                CasinoTheme.current = theme
+                refreshTheme()
+                onThemeChanged()
+            })
+        }
+
+        val scrollPane = JScrollPane(tilesPanel)
+        scrollPane.border = null
+        scrollPane.isOpaque = false
+        scrollPane.viewport.isOpaque = false
+        scrollPane.verticalScrollBarPolicy = javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+
+        tab.add(scrollPane, BorderLayout.CENTER)
         return tab
+    }
+
+    /**
+     * Плитка темы: превью-картинка + название снизу, золотая рамка у выбранной.
+     * Клик — [onSelect].
+     */
+    private fun createThemeTile(theme: AppTheme, onSelect: () -> Unit): JPanel {
+        val selected = CasinoTheme.current.id == theme.id
+        val icon = loadImageIcon(theme.previewPath)
+        val previewLabel = JLabel(icon)
+        previewLabel.border = BorderFactory.createLineBorder(
+            if (selected) CasinoTheme.gold else CasinoTheme.goldDark,
+            if (selected) 3 else 1,
+        )
+
+        val titleLabel = JLabel(theme.title, SwingConstants.CENTER)
+        titleLabel.font = CasinoTheme.buttonFont
+        titleLabel.foreground = if (selected) CasinoTheme.goldBright else CasinoTheme.gold
+
+        val tile = JPanel(BorderLayout(0, 6)).apply {
+            isOpaque = false
+            add(previewLabel, BorderLayout.CENTER)
+            add(titleLabel, BorderLayout.SOUTH)
+            cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        }
+        tile.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(event: MouseEvent) {
+                onSelect()
+            }
+        })
+        return tile
+    }
+
+    /**
+     * Перекрашивает окно настроек под новую тему: пересоздаём всё содержимое.
+     */
+    private fun refreshTheme() {
+        contentPane.removeAll()
+        buildContent()
+        contentPane.revalidate()
+        contentPane.repaint()
+    }
+
+    /**
+     * Загружает картинку из ресурсов jar или из файла (для запуска из IDE).
+     */
+    private fun loadImageIcon(path: String): javax.swing.Icon {
+        val resource = javaClass.getResourceAsStream(path)
+        if (resource != null) {
+            return javax.swing.ImageIcon(resource.readBytes())
+        }
+        val file = java.io.File("src/main/resources$path")
+        return javax.swing.ImageIcon(file.absolutePath)
     }
 
     /**
@@ -190,23 +289,6 @@ class SettingsDialog(
         list.font = Font(Font.SANS_SERIF, Font.PLAIN, 16)
         list.fixedCellHeight = 30
         list.cellRenderer = ParticipantRenderer()
-
-        // Рендерер JList только рисует — клики по чекбоксу до него не доходят.
-        // Переключение пула обрабатываем на самом списке: клик в левой зоне строки
-        // (область чекбокса) инвертирует флаг участника.
-        list.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(event: MouseEvent) {
-                val index = list.locationToIndex(event.point)
-                if (index < 0) return
-                val participant = listModel.get(index) ?: return
-                val cellBounds = list.getCellBounds(index, index) ?: return
-                val clickX = event.point.x - cellBounds.x
-                if (clickX <= CHECKBOX_ZONE_WIDTH) {
-                    participantService.setInPool(participant.name, !participant.inPool)
-                    reloadParticipants()
-                }
-            }
-        })
 
         val scrollPane = JScrollPane(list)
         scrollPane.border = BorderFactory.createCompoundBorder(
@@ -245,7 +327,6 @@ class SettingsDialog(
             CasinoTheme.styleSmallButton(this)
             addActionListener { onAdd() }
         }
-        nameField.addActionListener { onAdd() }
 
         return JPanel(BorderLayout(8, 0)).apply {
             isOpaque = false
