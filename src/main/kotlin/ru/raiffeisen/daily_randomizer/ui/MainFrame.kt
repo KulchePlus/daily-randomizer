@@ -1,6 +1,7 @@
 package ru.raiffeisen.daily_randomizer.ui
 
 import ru.raiffeisen.daily_randomizer.service.ParticipantService
+import ru.raiffeisen.daily_randomizer.service.UpdateController
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.GridBagConstraints
@@ -21,6 +22,7 @@ class MainFrame(
     private val participantService: ParticipantService,
 ) : JFrame("Daily Randomizer") {
 
+    private val updates = UpdateController()
     private val slotReel = SlotReel()
     private val spinButton = JButton("КРУТИТЬ")
     private val conductButton = JButton("Провести")
@@ -31,7 +33,11 @@ class MainFrame(
 
     init {
         defaultCloseOperation = EXIT_ON_CLOSE
-        setSize(560, 400)
+        // pack() вместо фиксированного setSize: на Windows при масштабировании DPI
+        // шрифты занимают больше пикселей, и при фиксированном размере контент
+        // не влезал — GridBagLayout сплющивал барабан в полоску
+        pack()
+        setSize(maxOf(width, 560), maxOf(height, 400))
         setLocationRelativeTo(null)
 
         // Листенеры регистрируются ОДИН раз: buildContent() вызывается при каждой
@@ -44,6 +50,7 @@ class MainFrame(
 
         // Салют поверх всего окна: glass pane не перехватывает клики
         rootPane.glassPane = fireworksOverlay
+        if (updates.autoUpdates) updates.checkForUpdates()
     }
 
     /**
@@ -171,6 +178,15 @@ class MainFrame(
     private fun openSettings() {
         spinAnimator.stop()
         spinButton.isEnabled = true
-        SettingsDialog(this, participantService, onThemeChanged = { buildContent() }).isVisible = true
+        SettingsDialog(
+            this, participantService,
+            updates = updates,
+            onThemeChanged = { buildContent() },
+            onProfileChanged = {
+                lastWinner = null
+                spinButton.text = "КРУТИТЬ"
+                buildContent()
+            },
+        ).isVisible = true
     }
 }

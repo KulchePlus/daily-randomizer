@@ -2,6 +2,9 @@ package ru.raiffeisen.daily_randomizer.ui
 
 import ru.raiffeisen.daily_randomizer.service.Participant
 import ru.raiffeisen.daily_randomizer.service.ParticipantService
+import ru.raiffeisen.daily_randomizer.service.TeamProfile
+import ru.raiffeisen.daily_randomizer.service.UpdateController
+import javax.swing.JComboBox
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -38,6 +41,8 @@ class SettingsDialog(
     owner: Window,
     private val participantService: ParticipantService,
     private val onThemeChanged: () -> Unit = {},
+    private val onProfileChanged: () -> Unit = {},
+    private val updates: UpdateController = UpdateController(),
 ) : JDialog(owner, "Настройки", ModalityType.APPLICATION_MODAL) {
 
     private companion object {
@@ -47,11 +52,21 @@ class SettingsDialog(
         // Имена карточек (вкладок)
         const val TAB_PARTICIPANTS = "participants"
         const val TAB_THEME = "theme"
+        const val TAB_UPDATES = "updates"
     }
 
     private val listModel = DefaultListModel<Participant>()
     private val list = JList(listModel)
     private val nameField = JTextField(20)
+
+    private var selectedTab = TAB_PARTICIPANTS
+    private var unsubscribeUpdates: (() -> Unit)? = null
+
+    override fun dispose() {
+        unsubscribeUpdates?.invoke()
+        unsubscribeUpdates = null
+        super.dispose()
+    }
 
     init {
         layout = BorderLayout()
@@ -91,6 +106,7 @@ class SettingsDialog(
         contentCards.isOpaque = false
         contentCards.add(createParticipantsTab(), TAB_PARTICIPANTS)
         contentCards.add(createThemeTab(), TAB_THEME)
+        contentCards.add(createUpdatesTab(), TAB_UPDATES)
 
         val participantsButtons = createButtonsPanel()
         val closeButtonOnly = createCloseOnlyPanel()
@@ -101,33 +117,39 @@ class SettingsDialog(
         southPanel.isOpaque = false
         southPanel.add(participantsButtons, TAB_PARTICIPANTS)
         southPanel.add(closeButtonOnly, TAB_THEME)
+        southPanel.add(createCloseOnlyPanel(), TAB_UPDATES)
 
         val participantsTabButton = createTabButton("Участники")
         val themeTabButton = createTabButton("Тема")
+        val updatesTabButton = createTabButton("Обновления")
 
         fun selectTab(tab: String) {
+            selectedTab = tab
             (contentCards.layout as java.awt.CardLayout).show(contentCards, tab)
             (southPanel.layout as java.awt.CardLayout).show(southPanel, tab)
             val onParticipants = tab == TAB_PARTICIPANTS
             participantsTabButton.isSelected = onParticipants
-            themeTabButton.isSelected = !onParticipants
+            themeTabButton.isSelected = tab == TAB_THEME
+            updatesTabButton.isSelected = tab == TAB_UPDATES
         }
 
         participantsTabButton.addActionListener { selectTab(TAB_PARTICIPANTS) }
         themeTabButton.addActionListener { selectTab(TAB_THEME) }
+        updatesTabButton.addActionListener { selectTab(TAB_UPDATES) }
 
         val tabHeader = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 4)).apply {
             isOpaque = false
             border = BorderFactory.createEmptyBorder(8, 12, 0, 12)
             add(participantsTabButton)
             add(themeTabButton)
+            add(updatesTabButton)
         }
 
         add(tabHeader, BorderLayout.NORTH)
         add(contentCards, BorderLayout.CENTER)
         add(southPanel, BorderLayout.SOUTH)
 
-        selectTab(TAB_PARTICIPANTS)
+        selectTab(selectedTab)
 
         // Ширина окна — по фактической ширине панели кнопок + поля,
         // чтобы все кнопки помещались в один ряд при любом шрифте системы
@@ -176,9 +198,187 @@ class SettingsDialog(
     private fun createParticipantsTab(): JPanel {
         val tab = JPanel(BorderLayout())
         tab.isOpaque = false
-        tab.add(createAddPanel(), BorderLayout.NORTH)
+        val header = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            add(createProfilesPanel(), BorderLayout.NORTH)
+            add(createAddPanel(), BorderLayout.SOUTH)
+        }
+        tab.add(header, BorderLayout.NORTH)
         tab.add(createListPanel(), BorderLayout.CENTER)
         return tab
+    }
+
+    private fun createUpdatesTab(): JPanel {
+        val automatic = JCheckBox("Включить автообновления").apply {
+            isOpaque = false
+            foreground = CasinoTheme.textLight
+            font = CasinoTheme.smallButtonFont
+            addActionListener { updates.setAutoUpdates(isSelected) }
+        }
+        val action = JButton().apply {
+            CasinoTheme.styleSmallButton(this)
+            addActionListener {
+                if (updates.release == null) updates.checkForUpdates() else updates.update()
+            }
+        }
+        val status = javax.swing.JTextArea().apply {
+            isEditable = false
+            isOpaque = false
+            lineWrap = true
+            wrapStyleWord = true
+            foreground = CasinoTheme.textLight
+            font = CasinoTheme.smallButtonFont
+            rows = 4
+        }
+        val explanation = javax.swing.JTextArea(
+            "При запуске приложение проверяет и скачивает обновления. " +
+                "Для установки нажмите кнопку обновления — приложение перезапустится.",
+        ).apply {
+            isEditable = false
+            isOpaque = false
+            lineWrap = true
+            wrapStyleWord = true
+            foreground = CasinoTheme.textLight
+            font = CasinoTheme.smallButtonFont
+            rows = 3
+        }
+        val controls = JPanel().apply {
+            isOpaque = false
+            layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
+            listOf(automatic, explanation, action, status).forEach {
+                it.alignmentX = Component.LEFT_ALIGNMENT
+                add(it)
+                add(javax.swing.Box.createVerticalStrut(12))
+            }
+        }
+        unsubscribeUpdates?.invoke()
+        unsubscribeUpdates = updates.subscribe {
+            automatic.isSelected = updates.autoUpdates
+            action.isEnabled = !updates.busy
+            action.text = if (updates.busy) "Подождите…" else updates.release?.let {
+                "Обновить до версии ${it.version}"
+            } ?: "Проверить обновления"
+            status.text = updates.status
+        }
+        return JPanel(BorderLayout(0, 16)).apply {
+            isOpaque = false
+            border = BorderFactory.createEmptyBorder(16, 20, 12, 20)
+            add(controls, BorderLayout.NORTH)
+            add(JLabel("Текущая версия приложения: ${updates.currentVersion}").apply {
+                foreground = CasinoTheme.gold
+                font = CasinoTheme.smallButtonFont
+            }, BorderLayout.SOUTH)
+        }
+    }
+
+    private fun createProfilesPanel(): JPanel {
+        val profiles = participantService.getProfiles()
+        val active = participantService.getActiveProfile()
+        val selector = JComboBox(profiles.toTypedArray()).apply {
+            selectedItem = profiles.first { it.id == active.id }
+            // Нативный Aqua UI игнорирует фон JComboBox и рисует белое меню.
+            setUI(object : javax.swing.plaf.basic.BasicComboBoxUI() {
+                override fun createArrowButton(): JButton = javax.swing.plaf.basic.BasicArrowButton(
+                    SwingConstants.SOUTH, CasinoTheme.feltDeepest, CasinoTheme.goldDark,
+                    CasinoTheme.gold, CasinoTheme.felt,
+                )
+
+                override fun createPopup(): javax.swing.plaf.basic.ComboPopup =
+                    (super.createPopup() as javax.swing.plaf.basic.BasicComboPopup).apply {
+                        background = CasinoTheme.slotWindowBg
+                        border = BorderFactory.createLineBorder(CasinoTheme.goldDark)
+                        list.background = CasinoTheme.slotWindowBg
+                        list.foreground = CasinoTheme.textLight
+                        list.selectionBackground = CasinoTheme.felt
+                        list.selectionForeground = CasinoTheme.goldBright
+                    }
+            })
+            background = CasinoTheme.slotWindowBg
+            foreground = CasinoTheme.textLight
+            font = CasinoTheme.smallButtonFont
+            border = BorderFactory.createLineBorder(CasinoTheme.goldDark)
+            renderer = ListCellRenderer { _, profile, _, selected, _ ->
+                JLabel(profile?.name.orEmpty()).apply {
+                    isOpaque = true
+                    background = if (selected) CasinoTheme.felt else CasinoTheme.slotWindowBg
+                    foreground = if (selected) CasinoTheme.goldBright else CasinoTheme.textLight
+                    font = CasinoTheme.smallButtonFont
+                    border = BorderFactory.createEmptyBorder(6, 8, 6, 8)
+                }
+            }
+        }
+        selector.addActionListener {
+            val profile = selector.selectedItem as? TeamProfile ?: return@addActionListener
+            if (profile.id != participantService.getActiveProfile().id) {
+                profileAction {
+                    participantService.switchProfile(profile.id)
+                    onProfileChanged()
+                }
+            }
+        }
+        val createButton = JButton("Создать").apply {
+            CasinoTheme.styleSmallButton(this)
+            addActionListener {
+                val name = JOptionPane.showInputDialog(this@SettingsDialog, "Название команды:", "Новая команда", JOptionPane.PLAIN_MESSAGE)
+                    ?: return@addActionListener
+                profileAction {
+                    participantService.createProfile(name)
+                    onProfileChanged()
+                }
+            }
+        }
+        val renameButton = JButton("Переименовать").apply {
+            CasinoTheme.styleSmallButton(this)
+            addActionListener {
+                val current = participantService.getActiveProfile()
+                val name = JOptionPane.showInputDialog(this@SettingsDialog, "Название команды:", current.name)
+                    ?: return@addActionListener
+                profileAction { participantService.renameProfile(current.id, name) }
+            }
+        }
+        val deleteButton = JButton("Удалить команду").apply {
+            CasinoTheme.styleSmallButton(this)
+            isEnabled = profiles.size > 1
+            addActionListener {
+                val current = participantService.getActiveProfile()
+                val answer = JOptionPane.showConfirmDialog(
+                    this@SettingsDialog, "Удалить команду «${current.name}» и всех её участников?",
+                    "Удаление команды", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
+                )
+                if (answer == JOptionPane.YES_OPTION) profileAction {
+                    participantService.deleteProfile(current.id)
+                    onProfileChanged()
+                }
+            }
+        }
+        val actions = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            isOpaque = false
+            add(createButton)
+            add(renameButton)
+            add(deleteButton)
+        }
+        return JPanel(BorderLayout(0, 8)).apply {
+            isOpaque = false
+            border = BorderFactory.createEmptyBorder(12, 12, 0, 12)
+            add(JPanel(BorderLayout(8, 0)).apply {
+                isOpaque = false
+                add(JLabel("Команда:").apply { foreground = CasinoTheme.gold }, BorderLayout.WEST)
+                add(selector, BorderLayout.CENTER)
+            }, BorderLayout.NORTH)
+            add(actions, BorderLayout.SOUTH)
+        }
+    }
+
+    private fun profileAction(action: () -> Unit) {
+        try {
+            action()
+            nameField.text = ""
+            refreshTheme()
+        } catch (e: IllegalArgumentException) {
+            showError(e.message ?: "Не удалось изменить команду")
+        } catch (e: IllegalStateException) {
+            showError(e.message ?: "Не удалось сохранить команду")
+        }
     }
 
     /**

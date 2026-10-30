@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "ru.raiffeisen"
-version = "2.0.1"
+version = "2.1.0"
 
 java {
 	toolchain {
@@ -40,4 +40,13 @@ application {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// Версия для UI берётся из той же настройки, что и имя собранного jar.
+tasks.processResources {
+    val appVersion = project.version.toString()
+    inputs.property("appVersion", appVersion)
+    filesMatching("app-version.properties") {
+        expand("appVersion" to appVersion)
+    }
 }

@@ -74,7 +74,9 @@ object CasinoTheme {
         button.isContentAreaFilled = false
         button.isFocusPainted = false
         button.isOpaque = false
-        button.border = null
+        // Border ставится ПОСЛЕ setUI: installDefaults у BasicButtonUI
+        // устанавливает стандартный border, если текущий null — на Windows
+        // из-за этого рисовалась квадратная рамка поверх фишки
         button.preferredSize = java.awt.Dimension(220, 60)
         button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
@@ -115,6 +117,7 @@ object CasinoTheme {
                 g2.drawString(text, tx, ty)
             }
         })
+        button.border = null
     }
 
     /**
@@ -128,7 +131,6 @@ object CasinoTheme {
         button.isContentAreaFilled = false
         button.isFocusPainted = false
         button.isOpaque = false
-        button.border = null
         button.preferredSize = java.awt.Dimension(220, 60)
         button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
@@ -195,6 +197,12 @@ object CasinoTheme {
                 g2.drawString(button.text, tx, ty)
             }
         })
+        // Border ПОСЛЕ setUI: installDefaults устанавливает стандартный border,
+        // если текущий null — на Windows из-за этого рисовалась квадратная рамка
+        button.border = javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createLineBorder(goldDark),
+            javax.swing.BorderFactory.createEmptyBorder(4, 10, 4, 10),
+        )
     }
 
     /**
