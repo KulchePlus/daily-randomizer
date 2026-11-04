@@ -39,12 +39,12 @@ object CasinoTheme {
     val slotWindowBg: Color get() = current.slotWindowBg
     val textLight: Color get() = current.textLight
 
-    val titleFont = Font(Font.SERIF, Font.BOLD, 22)
-    val nameFont = Font(Font.SANS_SERIF, Font.BOLD, 40)
-    val reelFont = Font(Font.SANS_SERIF, Font.BOLD, 30)
-    val winnerFont = Font(Font.SANS_SERIF, Font.BOLD, 46)
-    val buttonFont = Font(Font.SANS_SERIF, Font.BOLD, 18)
-    val smallButtonFont = Font(Font.SANS_SERIF, Font.BOLD, 12)
+    val titleFont get() = Font(current.fontFamily, Font.BOLD, 22)
+    val nameFont get() = Font(current.fontFamily, Font.BOLD, 40)
+    val reelFont get() = Font(current.fontFamily, Font.BOLD, 30)
+    val winnerFont get() = Font(current.fontFamily, Font.BOLD, 46)
+    val buttonFont get() = Font(current.fontFamily, Font.BOLD, 18)
+    val smallButtonFont get() = Font(current.fontFamily, Font.BOLD, 12)
 
     // Оттенок золота в HSB для перелива имени победителя
     val goldHue: Double
@@ -61,7 +61,67 @@ object CasinoTheme {
         when (current.chipStyle) {
             ChipStyle.ROUND_CHIP -> styleRoundChipButton(button)
             ChipStyle.FLAT_RECT -> styleFlatRectButton(button)
+            ChipStyle.WOOD, ChipStyle.NEON, ChipStyle.SOFT -> styleThemedButton(button)
         }
+    }
+
+    private fun styleThemedButton(button: JButton) {
+        button.font = buttonFont
+        button.isContentAreaFilled = false
+        button.isFocusPainted = false
+        button.isOpaque = false
+        button.isBorderPainted = false
+        button.preferredSize = java.awt.Dimension(240, 60)
+        button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
+            override fun paint(g: Graphics, c: javax.swing.JComponent) {
+                val g2 = g.create() as Graphics2D
+                try {
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                    val model = button.model
+                    val w = c.width - 1
+                    val h = c.height - 1
+                    val style = current.chipStyle
+                    val active = model.isPressed || model.isRollover
+                    g2.color = if (active) redBright else red
+                    if (style == ChipStyle.NEON) {
+                        val shape = java.awt.Polygon(intArrayOf(12, w, w, w - 12, 0, 0), intArrayOf(0, 0, h - 12, h, h, 12), 6)
+                        g2.fillPolygon(shape)
+                        g2.color = gold
+                        g2.stroke = java.awt.BasicStroke(2f)
+                        g2.drawPolygon(shape)
+                        g2.color = current.redBright
+                        g2.drawLine(16, h - 5, w - 18, h - 5)
+                    } else {
+                        if (style == ChipStyle.WOOD) {
+                            g2.paint = java.awt.GradientPaint(0f, 0f, redBright, 0f, h.toFloat(), red)
+                        }
+                        g2.fillRoundRect(0, 0, w, h, 16, 16)
+                        g2.paint = null
+                        if (style == ChipStyle.WOOD) {
+                            g2.color = goldDark
+                            g2.drawRoundRect(4, 4, w - 8, h - 8, 12, 12)
+                        }
+                    }
+                    if (button.hasFocus()) {
+                        g2.color = textLight
+                        g2.drawRoundRect(5, 5, w - 10, h - 10, 10, 10)
+                    }
+                    g2.font = button.font
+                    g2.color = when (style) {
+                        ChipStyle.WOOD -> goldBright
+                        ChipStyle.NEON -> if (active) current.feltDeepest else gold
+                        else -> current.feltDeepest
+                    }
+                    if (!button.isEnabled) g2.composite = java.awt.AlphaComposite.SrcOver.derive(0.55f)
+                    val metrics = g2.fontMetrics
+                    g2.drawString(button.text, (w - metrics.stringWidth(button.text)) / 2, (h + metrics.ascent - metrics.descent) / 2)
+                } finally {
+                    g2.dispose()
+                }
+            }
+        })
+        button.border = null
     }
 
     /**
@@ -131,6 +191,7 @@ object CasinoTheme {
         button.isContentAreaFilled = false
         button.isFocusPainted = false
         button.isOpaque = false
+        button.isBorderPainted = false
         button.preferredSize = java.awt.Dimension(220, 60)
         button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
@@ -156,6 +217,7 @@ object CasinoTheme {
                 g2.drawString(text, tx, ty)
             }
         })
+        button.border = null
     }
 
     /**
@@ -190,7 +252,7 @@ object CasinoTheme {
                 g2.drawRect(0, 0, b.width - 1, b.height - 1)
                 // Текст
                 g2.font = button.font
-                g2.color = if (model.isRollover) goldBright else gold
+                g2.color = if (model.isRollover) textLight else gold
                 val metrics = g2.fontMetrics
                 val tx = (b.width - metrics.stringWidth(button.text)) / 2
                 val ty = (b.height + metrics.ascent - metrics.descent) / 2
