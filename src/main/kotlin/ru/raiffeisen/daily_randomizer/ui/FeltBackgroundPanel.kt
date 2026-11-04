@@ -33,7 +33,53 @@ class FeltBackgroundPanel(layout: java.awt.LayoutManager?) : JPanel(layout) {
         when (CasinoTheme.current.backgroundPattern) {
             BackgroundPattern.VIGNETTE -> paintVignette(g2, w, h)
             BackgroundPattern.DIAGONAL_STRIPES -> paintDiagonalStripes(g2, w, h)
+            BackgroundPattern.NONE -> Unit
+            else -> paintThemePattern(g2, w, h)
         }
+    }
+
+    private fun paintThemePattern(g2: Graphics2D, w: Int, h: Int) {
+        val layer = g2.create() as Graphics2D
+        try {
+            layer.color = CasinoTheme.gold
+            layer.composite = java.awt.AlphaComposite.SrcOver.derive(0.08f)
+            when (CasinoTheme.current.backgroundPattern) {
+                BackgroundPattern.LOTTO -> {
+                    layer.font = java.awt.Font(java.awt.Font.SERIF, java.awt.Font.BOLD, 18)
+                    for (y in 24..h step 76) for (x in 24..w step 76) {
+                        layer.drawOval(x - 17, y - 17, 34, 34)
+                        val number = ((x / 76 + y / 76 * 7) % 90 + 1).toString()
+                        layer.drawString(number, x - layer.fontMetrics.stringWidth(number) / 2, y + 6)
+                    }
+                }
+                BackgroundPattern.SCANLINES -> {
+                    for (y in 0..h step 5) layer.drawLine(0, y, w, y)
+                    layer.composite = java.awt.AlphaComposite.SrcOver.derive(0.18f)
+                    layer.font = java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12)
+                    layer.drawString("// daily_randomizer — ready", 18, 24)
+                }
+                BackgroundPattern.NEON_GRID -> {
+                    val horizon = h / 3
+                    layer.composite = java.awt.AlphaComposite.SrcOver.derive(0.14f)
+                    layer.color = CasinoTheme.current.redBright
+                    for (y in horizon..h step 32) layer.drawLine(0, y, w, y)
+                    layer.color = CasinoTheme.gold
+                    for (x in -w..w * 2 step 80) layer.drawLine(w / 2, horizon, x, h)
+                }
+                BackgroundPattern.COFFEE -> {
+                    layer.stroke = BasicStroke(1.5f)
+                    for (y in 24..h step 90) for (x in 24..w step 90) {
+                        val bean = layer.create() as Graphics2D
+                        try {
+                            bean.rotate(-0.5, x.toDouble(), y.toDouble())
+                            bean.drawOval(x - 6, y - 10, 12, 20)
+                            bean.drawArc(x - 4, y - 10, 8, 20, -90, 180)
+                        } finally { bean.dispose() }
+                    }
+                }
+                else -> Unit
+            }
+        } finally { layer.dispose() }
     }
 
     /** Виньетка по краям — стиль казино. */

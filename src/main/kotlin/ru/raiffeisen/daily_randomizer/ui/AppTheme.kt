@@ -9,6 +9,11 @@ enum class BackgroundPattern {
 
     /** Диагональные жёлтые линии — Райффайзен. */
     DIAGONAL_STRIPES,
+    LOTTO,
+    SCANLINES,
+    NEON_GRID,
+    COFFEE,
+    NONE,
 }
 
 /** Стиль кнопки "Крутить". */
@@ -18,10 +23,15 @@ enum class ChipStyle {
 
     /** Плоский прямоугольник с фирменной рамкой. */
     FLAT_RECT,
+    WOOD,
+    NEON,
+    SOFT,
 }
 
+enum class ReelStyle { CLASSIC, BARREL, TERMINAL, NEON, CARD, CLEAN }
+
 /**
- * Тема приложения: палитра цветов, узор фона, стиль кнопки и путь к превью.
+ * Тема приложения: палитра, типографика, узор фона, оформление барабана и кнопки.
  */
 data class AppTheme(
     val id: String,
@@ -38,12 +48,17 @@ data class AppTheme(
     val redBright: Color,
     val slotWindowBg: Color,
     val textLight: Color,
-    val previewPath: String,
     val backgroundPattern: BackgroundPattern = BackgroundPattern.VIGNETTE,
     val slotBorderThickness: Int = 3,
     val chipStyle: ChipStyle = ChipStyle.ROUND_CHIP,
     val showLogo: Boolean = false,
     val fireworksColors: List<Color> = emptyList(),
+    val fontFamily: String = java.awt.Font.SANS_SERIF,
+    val reelStyle: ReelStyle = ReelStyle.CLASSIC,
+    val spinText: String = "КРУТИТЬ",
+    val respinText: String = "ПЕРЕКРУТИТЬ",
+    val spinningText: String = "КРУТИТСЯ...",
+    val shimmerWinner: Boolean = true,
 ) {
     companion object {
         /** Казино: зелёное сукно, золото, красная фишка, виньетка. */
@@ -62,7 +77,6 @@ data class AppTheme(
             redBright = Color(0xD9, 0x2B, 0x2B),
             slotWindowBg = Color(0x12, 0x12, 0x12),
             textLight = Color(0xF5, 0xF0, 0xE1),
-            previewPath = "/themes/casino.png",
         )
 
         /** Райффайзен: фирменный жёлтый на тёмно-сером, диагональные линии, логотип. */
@@ -81,7 +95,6 @@ data class AppTheme(
             redBright = Color(0x3D, 0x3D, 0x3D),
             slotWindowBg = Color(0x00, 0x00, 0x00),
             textLight = Color(0xFA, 0xFA, 0xFA),
-            previewPath = "/themes/raiffeisen.png",
             backgroundPattern = BackgroundPattern.DIAGONAL_STRIPES,
             slotBorderThickness = 1,
             chipStyle = ChipStyle.FLAT_RECT,
@@ -94,6 +107,75 @@ data class AppTheme(
             ),
         )
 
-        val ALL = listOf(CASINO, RAIFFEISEN)
+        val SOVIET_LOTTO = AppTheme(
+            id = "soviet-lotto", title = "Советское лото",
+            feltDark = Color(0x451E28), felt = Color(0x713341), feltLight = Color(0x63303C),
+            feltDeepest = Color(0x351720), feltDeepestPressed = Color(0x291119),
+            gold = Color(0xE4BC77), goldBright = Color(0x56361F), goldDark = Color(0xBE965E),
+            red = Color(0xD8AE70), redBright = Color(0xEBCB94),
+            slotWindowBg = Color(0xEDD3A2), textLight = Color(0xFFF0D5),
+            backgroundPattern = BackgroundPattern.LOTTO,
+            chipStyle = ChipStyle.WOOD, reelStyle = ReelStyle.BARREL,
+            fontFamily = java.awt.Font.SERIF, spinText = "Достать бочонок",
+            respinText = "Ещё бочонок", spinningText = "Перемешиваем...", shimmerWinner = false,
+            fireworksColors = listOf(Color(0xE4BC77), Color(0xFFF0D5), Color(0xB95660)),
+        )
+
+        val TERMINAL = AppTheme(
+            id = "terminal", title = "Терминал",
+            feltDark = Color(0x080E0B), felt = Color(0x14271B), feltLight = Color(0x0D1912),
+            feltDeepest = Color(0x050A07), feltDeepestPressed = Color(0x162D1D),
+            gold = Color(0x6BE595), goldBright = Color(0xA5FFC3), goldDark = Color(0x448F5C),
+            red = Color(0x0B1710), redBright = Color(0x173622),
+            slotWindowBg = Color(0x050B07), textLight = Color(0xB8EAC8),
+            backgroundPattern = BackgroundPattern.SCANLINES,
+            chipStyle = ChipStyle.FLAT_RECT, reelStyle = ReelStyle.TERMINAL,
+            fontFamily = java.awt.Font.MONOSPACED, spinText = "./choose",
+            respinText = "./choose --again", spinningText = "running...", shimmerWinner = false,
+            fireworksColors = listOf(Color(0x6BE595), Color(0xA5FFC3)),
+        )
+
+        val CYBERPUNK = AppTheme(
+            id = "cyberpunk", title = "Киберпанк",
+            feltDark = Color(0x100B21), felt = Color(0x29163F), feltLight = Color(0x211135),
+            feltDeepest = Color(0x0B0718), feltDeepestPressed = Color(0x36164D),
+            gold = Color(0x43E8F3), goldBright = Color(0xBAF9FF), goldDark = Color(0xA14AA4),
+            red = Color(0x251135), redBright = Color(0xFF50CB),
+            slotWindowBg = Color(0x0B0718), textLight = Color(0xF5DFFF),
+            backgroundPattern = BackgroundPattern.NEON_GRID,
+            chipStyle = ChipStyle.NEON, reelStyle = ReelStyle.NEON,
+            fontFamily = java.awt.Font.MONOSPACED,
+            fireworksColors = listOf(Color(0x43E8F3), Color(0xFF50CB), Color(0xBFA0FF)),
+        )
+
+        val COFFEE_HOUSE = AppTheme(
+            id = "coffee-house", title = "Кофейня",
+            feltDark = Color(0xE9D8C2), felt = Color(0xDEC7AA), feltLight = Color(0xF6EBDD),
+            feltDeepest = Color(0xFFF5E8), feltDeepestPressed = Color(0xDDC6AB),
+            gold = Color(0x70472F), goldBright = Color(0x593722), goldDark = Color(0x936E4F),
+            red = Color(0x70472F), redBright = Color(0x8A5B3C),
+            slotWindowBg = Color(0xFFF8ED), textLight = Color(0x49352A),
+            backgroundPattern = BackgroundPattern.COFFEE,
+            chipStyle = ChipStyle.SOFT, reelStyle = ReelStyle.CARD,
+            fontFamily = java.awt.Font.SERIF, spinText = "Кто варит дейли?",
+            respinText = "Другой заказ", spinningText = "Завариваем...", shimmerWinner = false,
+            fireworksColors = listOf(Color(0x70472F), Color(0xBE8758), Color(0x936E4F)),
+        )
+
+        val MINIMALISM = AppTheme(
+            id = "minimalism", title = "Минимализм",
+            feltDark = Color(0xF4F5F7), felt = Color(0xE5EAF2), feltLight = Color(0xF4F5F7),
+            feltDeepest = Color(0xFFFFFF), feltDeepestPressed = Color(0xE4EAF4),
+            gold = Color(0x315DB5), goldBright = Color(0x23478F), goldDark = Color(0x54709F),
+            red = Color(0x315DB5), redBright = Color(0x23478F),
+            slotWindowBg = Color(0xFFFFFF), textLight = Color(0x202C40),
+            backgroundPattern = BackgroundPattern.NONE,
+            slotBorderThickness = 1, chipStyle = ChipStyle.SOFT, reelStyle = ReelStyle.CLEAN,
+            spinText = "Выбрать ведущего", respinText = "Выбрать ещё раз",
+            spinningText = "Выбираем...", shimmerWinner = false,
+            fireworksColors = listOf(Color(0x315DB5), Color(0x7394CF), Color(0x54709F)),
+        )
+
+        val ALL = listOf(CASINO, RAIFFEISEN, SOVIET_LOTTO, TERMINAL, CYBERPUNK, COFFEE_HOUSE, MINIMALISM)
     }
 }
