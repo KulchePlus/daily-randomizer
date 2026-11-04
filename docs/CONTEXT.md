@@ -74,13 +74,18 @@
 
 ## Темы (2026-10-17)
 
-Две темы: «Казино» (по умолчанию) и «Райффайзен» (фирменный жёлтый на тёмно-сером).
+Семь тем: «Казино» (по умолчанию), «Райффайзен», «Советское лото», «Терминал», «Киберпанк», «Кофейня» и «Минимализм» (обновлено 2026-11-04).
 
-- `AppTheme.kt` — data class темы: id, title, палитра цветов (feltDark/felt/feltLight/feltDeepest/feltDeepestPressed, gold/goldBright/goldDark, red/redBright, slotWindowBg, textLight) + previewPath. Companion: `CASINO`, `RAIFFEISEN`, `ALL`. Райффайзен: feltDark 0x1A1A1A, gold 0xFFEC00 (фирменный жёлтый), red → тёмно-серый 0x262626 (фишка «Крутить» становится тёмной с жёлтой окантовкой), slotWindowBg — чистый чёрный.
+- `AppTheme.kt` — палитра, `fontFamily`, `backgroundPattern`, `chipStyle`, `reelStyle`, подписи кнопки в трёх состояниях, `shimmerWinner`, цвета салюта. `ALL` содержит семь тем. Для светлых тем и лото `goldBright` — контрастный тёмный цвет текста барабана; текст настроек берётся из `textLight`.
 - `CasinoTheme` — переписан на делегирование `current: AppTheme` (все цвета через `get()`), имя объекта оставлено для совместимости. `goldHue` вычисляется из `current.gold` через `Color.RGBtoHSB` — перелив имени победителя подстраивается под тему (у Райффайзена — жёлтый перелив).
-- `SettingsDialog` — плитки строятся из `AppTheme.ALL` (createThemeTile: превью + название, золотая рамка 3px у выбранной, 1px у остальных). Клик по плитке: `CasinoTheme.current = theme; refreshTheme(); onThemeChanged()`. Добавлен параметр конструктора `onThemeChanged: () -> Unit = {}`.
+- `SettingsDialog` — сетка в две колонки с вертикальной прокруткой; плитки-кнопки доступны с клавиатуры. Клик: `CasinoTheme.current = theme; refreshTheme(); onThemeChanged()`. У выбранной темы рамка 3px, у остальных 1px.
 - `MainFrame` — построение вынесено в `buildContent()` (вызывается из init и при смене темы); `openSettings()` передаёт `onThemeChanged = { buildContent() }` — главное окно перекрашивается на лету, диалог настроек остаётся открытым.
-- Превью: `src/main/resources/themes/casino.png` и `themes/raiffeisen.png` — 192x136, генерируются java-скриптами (GenCasinoPreview / GenRaifPreview в job tmp) — headless-safe.
+- `ThemePreview.create()` рисует 192×136 из настоящих `FeltBackgroundPanel`, `SlotReel`, кнопок и логотипа; вызывается на EDT и восстанавливает активную тему в `finally`. Статические PNG больше не используются в настройках.
+- `MainFrame` сохраняет выбранного победителя и кнопку «Провести» при смене темы. `SlotReel` отключает перелив для лото, терминала, кофейни и минимализма, подбирает шрифт победителя под доступную ширину. `AppThemeTest` проверяет контраст текста и восстановление темы после рендера превью.
+
+## Шуточная подписка (2026-11-04)
+
+- `SubscriptionPanel` во вкладке «Подписка»: имя, обещание реже попадать на дейли, кнопка генерации QR. Swing Timer анимирует спиннер и через 1500 мс показывает статический QR `/subscription/payment-qr.png` на `https://media.giphy.com/media/Vuw9m5wXviFIQ/giphy.gif`. QR создан и проверен декодером ZXing, новой зависимости у приложения нет. Имя используется только в подписи, логика выбора участников не меняется. Таймер останавливается при закрытии окна; повторная генерация доступна после завершения. `SubscriptionPanelTest` проверяет пустое имя, задержку, повторный запуск и отмену.
 
 ## Способ запуска (решение 2026-10-16)
 

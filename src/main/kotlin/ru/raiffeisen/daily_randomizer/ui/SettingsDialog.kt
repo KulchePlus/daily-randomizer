@@ -53,16 +53,19 @@ class SettingsDialog(
         const val TAB_PARTICIPANTS = "participants"
         const val TAB_THEME = "theme"
         const val TAB_UPDATES = "updates"
+        const val TAB_SUBSCRIPTION = "subscription"
     }
 
     private val listModel = DefaultListModel<Participant>()
     private val list = JList(listModel)
     private val nameField = JTextField(20)
+    private val subscriptionPanel = SubscriptionPanel()
 
     private var selectedTab = TAB_PARTICIPANTS
     private var unsubscribeUpdates: (() -> Unit)? = null
 
     override fun dispose() {
+        subscriptionPanel.stopGeneration()
         unsubscribeUpdates?.invoke()
         unsubscribeUpdates = null
         super.dispose()
@@ -107,6 +110,8 @@ class SettingsDialog(
         contentCards.add(createParticipantsTab(), TAB_PARTICIPANTS)
         contentCards.add(createThemeTab(), TAB_THEME)
         contentCards.add(createUpdatesTab(), TAB_UPDATES)
+        subscriptionPanel.refreshTheme()
+        contentCards.add(subscriptionPanel, TAB_SUBSCRIPTION)
 
         val participantsButtons = createButtonsPanel()
         val closeButtonOnly = createCloseOnlyPanel()
@@ -118,10 +123,12 @@ class SettingsDialog(
         southPanel.add(participantsButtons, TAB_PARTICIPANTS)
         southPanel.add(closeButtonOnly, TAB_THEME)
         southPanel.add(createCloseOnlyPanel(), TAB_UPDATES)
+        southPanel.add(createCloseOnlyPanel(), TAB_SUBSCRIPTION)
 
         val participantsTabButton = createTabButton("Участники")
         val themeTabButton = createTabButton("Тема")
         val updatesTabButton = createTabButton("Обновления")
+        val subscriptionTabButton = createTabButton("Подписка")
 
         fun selectTab(tab: String) {
             selectedTab = tab
@@ -131,11 +138,13 @@ class SettingsDialog(
             participantsTabButton.isSelected = onParticipants
             themeTabButton.isSelected = tab == TAB_THEME
             updatesTabButton.isSelected = tab == TAB_UPDATES
+            subscriptionTabButton.isSelected = tab == TAB_SUBSCRIPTION
         }
 
         participantsTabButton.addActionListener { selectTab(TAB_PARTICIPANTS) }
         themeTabButton.addActionListener { selectTab(TAB_THEME) }
         updatesTabButton.addActionListener { selectTab(TAB_UPDATES) }
+        subscriptionTabButton.addActionListener { selectTab(TAB_SUBSCRIPTION) }
 
         val tabHeader = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 4)).apply {
             isOpaque = false
@@ -143,6 +152,7 @@ class SettingsDialog(
             add(participantsTabButton)
             add(themeTabButton)
             add(updatesTabButton)
+            add(subscriptionTabButton)
         }
 
         add(tabHeader, BorderLayout.NORTH)
@@ -155,7 +165,7 @@ class SettingsDialog(
         // чтобы все кнопки помещались в один ряд при любом шрифте системы
         pack()
         val buttonsWidth = participantsButtons.preferredSize.width
-        setSize(maxOf(buttonsWidth + 32, 440), maxOf(height, 460))
+        setSize(maxOf(width, buttonsWidth + 32, tabHeader.preferredSize.width + 24), maxOf(height, 460))
         setLocationRelativeTo(owner)
 
         reloadParticipants()
@@ -290,7 +300,7 @@ class SettingsDialog(
                         list.background = CasinoTheme.slotWindowBg
                         list.foreground = CasinoTheme.textLight
                         list.selectionBackground = CasinoTheme.felt
-                        list.selectionForeground = CasinoTheme.goldBright
+                        list.selectionForeground = CasinoTheme.textLight
                     }
             })
             background = CasinoTheme.slotWindowBg
@@ -301,7 +311,7 @@ class SettingsDialog(
                 JLabel(profile?.name.orEmpty()).apply {
                     isOpaque = true
                     background = if (selected) CasinoTheme.felt else CasinoTheme.slotWindowBg
-                    foreground = if (selected) CasinoTheme.goldBright else CasinoTheme.textLight
+                    foreground = CasinoTheme.textLight
                     font = CasinoTheme.smallButtonFont
                     border = BorderFactory.createEmptyBorder(6, 8, 6, 8)
                 }
@@ -389,7 +399,7 @@ class SettingsDialog(
         val tab = JPanel(BorderLayout())
         tab.isOpaque = false
 
-        val tilesPanel = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 16, 16)).apply {
+        val tilesPanel = JPanel(java.awt.GridLayout(0, 2, 16, 16)).apply {
             isOpaque = false
             border = BorderFactory.createEmptyBorder(12, 12, 12, 12)
         }
@@ -403,10 +413,13 @@ class SettingsDialog(
         }
 
         val scrollPane = JScrollPane(tilesPanel)
+        scrollPane.preferredSize = java.awt.Dimension(488, 350)
         scrollPane.border = null
         scrollPane.isOpaque = false
         scrollPane.viewport.isOpaque = false
         scrollPane.verticalScrollBarPolicy = javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+        scrollPane.horizontalScrollBarPolicy = javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        scrollPane.verticalScrollBar.unitIncrement = 24
 
         tab.add(scrollPane, BorderLayout.CENTER)
         return tab
@@ -418,28 +431,28 @@ class SettingsDialog(
      */
     private fun createThemeTile(theme: AppTheme, onSelect: () -> Unit): JPanel {
         val selected = CasinoTheme.current.id == theme.id
-        val icon = loadImageIcon(theme.previewPath)
-        val previewLabel = JLabel(icon)
-        previewLabel.border = BorderFactory.createLineBorder(
+        val button = JButton(theme.title, ThemePreview.create(theme))
+        button.setUI(javax.swing.plaf.basic.BasicButtonUI())
+        button.verticalTextPosition = SwingConstants.BOTTOM
+        button.horizontalTextPosition = SwingConstants.CENTER
+        button.iconTextGap = 8
+        button.font = CasinoTheme.smallButtonFont.deriveFont(15f)
+        button.foreground = CasinoTheme.textLight
+        button.isContentAreaFilled = false
+        button.isFocusPainted = true
+        button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        button.border = BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(
             if (selected) CasinoTheme.gold else CasinoTheme.goldDark,
             if (selected) 3 else 1,
-        )
-
-        val titleLabel = JLabel(theme.title, SwingConstants.CENTER)
-        titleLabel.font = CasinoTheme.buttonFont
-        titleLabel.foreground = if (selected) CasinoTheme.goldBright else CasinoTheme.gold
+        ), BorderFactory.createEmptyBorder(6, 2, 6, 2))
+        button.toolTipText = "Выбрать тему «${theme.title}»"
+        button.addActionListener { onSelect() }
 
         val tile = JPanel(BorderLayout(0, 6)).apply {
             isOpaque = false
-            add(previewLabel, BorderLayout.CENTER)
-            add(titleLabel, BorderLayout.SOUTH)
+            add(button, BorderLayout.CENTER)
             cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         }
-        tile.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(event: MouseEvent) {
-                onSelect()
-            }
-        })
         return tile
     }
 
@@ -451,18 +464,6 @@ class SettingsDialog(
         buildContent()
         contentPane.revalidate()
         contentPane.repaint()
-    }
-
-    /**
-     * Загружает картинку из ресурсов jar или из файла (для запуска из IDE).
-     */
-    private fun loadImageIcon(path: String): javax.swing.Icon {
-        val resource = javaClass.getResourceAsStream(path)
-        if (resource != null) {
-            return javax.swing.ImageIcon(resource.readBytes())
-        }
-        val file = java.io.File("src/main/resources$path")
-        return javax.swing.ImageIcon(file.absolutePath)
     }
 
     /**
@@ -484,7 +485,7 @@ class SettingsDialog(
         list.selectionMode = ListSelectionModel.SINGLE_SELECTION
         list.background = CasinoTheme.slotWindowBg
         list.foreground = CasinoTheme.textLight
-        list.selectionForeground = CasinoTheme.goldBright
+        list.selectionForeground = CasinoTheme.textLight
         list.selectionBackground = CasinoTheme.felt
         list.font = Font(Font.SANS_SERIF, Font.PLAIN, 16)
         list.fixedCellHeight = 30

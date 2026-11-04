@@ -58,9 +58,6 @@ class MainFrame(
      * (onThemeChanged) — пересоздаёт компоненты с новой палитрой.
      */
     private fun buildContent() {
-        // Пересоздаём барабан: в нём кэшируется состояние отрисовки
-        slotReel.setPlaceholder(lastWinner?.let { "«$it» провёл дейли. Нажми «Крутить»" } ?: "Нажми «Крутить»")
-
         contentPane.removeAll()
         contentPane.layout = BorderLayout()
         val root = FeltBackgroundPanel(BorderLayout())
@@ -68,8 +65,14 @@ class MainFrame(
         root.add(createSettingsCorner(), BorderLayout.NORTH)
         root.add(createCenterPanel(), BorderLayout.CENTER)
 
-        slotReel.setPlaceholder(lastWinner?.let { "«$it» провёл дейли. Нажми «Крутить»" } ?: "Нажми «Крутить»")
-        conductButton.isVisible = false
+        val winner = lastWinner
+        if (winner == null) {
+            slotReel.setPlaceholder(startPrompt())
+            conductButton.isVisible = false
+        } else {
+            slotReel.showWinner(winner)
+            showPostSpinButtons()
+        }
         contentPane.revalidate()
         contentPane.repaint()
     }
@@ -97,6 +100,7 @@ class MainFrame(
     }
 
     private fun createCenterPanel(): JPanel {
+        spinButton.text = CasinoTheme.current.spinText
         CasinoTheme.styleSpinButton(spinButton)
         CasinoTheme.styleSmallButton(conductButton)
 
@@ -138,7 +142,7 @@ class MainFrame(
         }
         spinButton.isEnabled = false
         conductButton.isVisible = false
-        spinButton.text = "КРУТИТСЯ..."
+        spinButton.text = CasinoTheme.current.spinningText
         val names = pool.map { it.name }
         val sequence = spinSequenceGenerator.generate(names)
         slotReel.setStrip(sequence)
@@ -159,7 +163,7 @@ class MainFrame(
 
     private fun showPostSpinButtons() {
         spinButton.isEnabled = true
-        spinButton.text = "ПЕРЕКРУТИТЬ"
+        spinButton.text = CasinoTheme.current.respinText
         conductButton.isVisible = true
     }
 
@@ -171,9 +175,11 @@ class MainFrame(
         participantService.removeFromPool(winner)
         lastWinner = null
         conductButton.isVisible = false
-        spinButton.text = "КРУТИТЬ"
-        slotReel.setPlaceholder("«$winner» провёл дейли. Нажми «Крутить»")
+        spinButton.text = CasinoTheme.current.spinText
+        slotReel.setPlaceholder("«$winner» провёл дейли. ${startPrompt()}")
     }
+
+    private fun startPrompt(): String = "Нажми «${CasinoTheme.current.spinText}»"
 
     private fun openSettings() {
         spinAnimator.stop()
@@ -184,7 +190,7 @@ class MainFrame(
             onThemeChanged = { buildContent() },
             onProfileChanged = {
                 lastWinner = null
-                spinButton.text = "КРУТИТЬ"
+                spinButton.text = CasinoTheme.current.spinText
                 buildContent()
             },
         ).isVisible = true
