@@ -7,6 +7,12 @@ import kotlin.test.assertTrue
 
 class SpinSequenceGeneratorTest {
 
+    @Test
+    fun selectedWinnerEndsSequence() {
+        val result = SpinSequenceGenerator().generate(listOf("Alice", "Bob"), winner = "Bob")
+        assertEquals("Bob", result.last())
+    }
+
     private val participants = listOf("Алиса", "Боб", "Вера")
     private val generator = SpinSequenceGenerator()
 

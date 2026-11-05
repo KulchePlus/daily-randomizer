@@ -13,13 +13,14 @@ class SpinSequenceGenerator(private val random: Random = Random.Default) {
      * @param steps количество смен имён во время прокрутки
      * @return последовательность показанных имён; последний элемент — результат
      */
-    fun generate(participants: List<String>, steps: Int = DEFAULT_STEPS): List<String> {
+    fun generate(participants: List<String>, steps: Int = DEFAULT_STEPS, winner: String? = null): List<String> {
         require(participants.isNotEmpty()) { "Список участников не может быть пустым" }
         require(steps > 0) { "Количество шагов должно быть положительным" }
 
-        val winnerIndex = random.nextInt(participants.size)
+        val selected = winner ?: participants.random(random)
+        require(selected in participants) { "Победитель должен быть участником" }
         val sequence = List(steps - 1) { participants[random.nextInt(participants.size)] }
-        return sequence + participants[winnerIndex]
+        return sequence + selected
     }
 
     companion object {

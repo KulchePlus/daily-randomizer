@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "ru.raiffeisen"
-version = "2.2.2"
+version = "2.2.5"
 
 java {
 	toolchain {

@@ -33,7 +33,7 @@
 1. **Сеть в песочнице**: сборка из Claude-сессии требует `dangerouslyDisableSandbox` — иначе TLS-handshake к Maven Central падает (`Remote host terminated the handshake`).
 2. **Headless — РЕШЕНО 2026-10-16**: корневая причина была в коде, а не в окружении. `SpringApplication.run()` по умолчанию выставляет `java.awt.headless=true` (метод `configureHeadlessProperty()` в Spring Boot), что ломает создание Swing-окон в любом терминале. Исправление в `DailyRandomizerApplication.kt`: явное `SpringApplication(...).setHeadless(false)` вместо `runApplication`. Подтверждение гипотезы: чистый `java /tmp/WindowTest.java` (без Spring) открывал окно, приложение с Spring падало везде. Гипотеза про Gradle-демон была неверной (демон мог усугублять, но не был причиной).
 3. **Версии Gradle**: 2026-10-16 wrapper зафиксирован на 8.14 (`gradle wrapper --gradle-version 8.14`), чтобы совпадал с локальной установкой в IDEA. Полная сборка с тестами на 8.14 — зелёная. Настройка "Distribution" в IDEA влияет только на задачи из IDEA, а `./gradlew` в терминале всегда использует wrapper-версию из `gradle/wrapper/gradle-wrapper.properties`.
-3. **Gradle user home**: предупреждение `WARNING Ignored custom Gradle user home location configured in Gradle user home: /Users/ruagbg3/.gradle/gradle.properties` — не критично, на работу не влияет.
+4. **Gradle user home**: предупреждение `WARNING Ignored custom Gradle user home location configured in Gradle user home: /Users/ruagbg3/.gradle/gradle.properties` — не критично, на работу не влияет.
 
 ## Открытые вопросы / следующие шаги
 
