@@ -66,7 +66,9 @@ class SlotReel : JComponent() {
         repaint()
     }
 
-    override fun getPreferredSize(): Dimension = Dimension(320, 110)
+    override fun getPreferredSize(): Dimension = Dimension(320, 132)
+
+    override fun getMinimumSize(): Dimension = Dimension(240, 132)
 
     override fun paintComponent(g: Graphics) {
         val g2 = g.create() as Graphics2D

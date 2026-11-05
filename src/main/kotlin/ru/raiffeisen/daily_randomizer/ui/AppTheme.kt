@@ -13,6 +13,7 @@ enum class BackgroundPattern {
     SCANLINES,
     NEON_GRID,
     COFFEE,
+    DOS_BRICKS,
     NONE,
 }
 
@@ -176,6 +177,21 @@ data class AppTheme(
             fireworksColors = listOf(Color(0x315DB5), Color(0x7394CF), Color(0x54709F)),
         )
 
-        val ALL = listOf(CASINO, RAIFFEISEN, SOVIET_LOTTO, TERMINAL, CYBERPUNK, COFFEE_HOUSE, MINIMALISM)
+        val FIELD_OF_WONDERS = AppTheme(
+            id = "field-of-wonders", title = "Поле чудес",
+            feltDark = Color(0x24243C), felt = Color(0x343454), feltLight = Color(0x24243C),
+            feltDeepest = Color(0x000080), feltDeepestPressed = Color(0x000050),
+            gold = Color(0xFFFF55), goldBright = Color(0xFFFFFF), goldDark = Color(0xAAAAAA),
+            red = Color(0x800000), redBright = Color(0xAA0000),
+            slotWindowBg = Color(0x000080), textLight = Color(0xFFFFFF),
+            backgroundPattern = BackgroundPattern.DOS_BRICKS,
+            slotBorderThickness = 4, chipStyle = ChipStyle.FLAT_RECT, reelStyle = ReelStyle.CLASSIC,
+            fontFamily = java.awt.Font.MONOSPACED,
+            spinText = "Вращайте барабан!", respinText = "Ещё оборот!",
+            spinningText = "Крутим!", shimmerWinner = false,
+            fireworksColors = listOf(Color(0xFFFF55), Color(0x55FFFF), Color(0xFF55FF)),
+        )
+
+        val ALL = listOf(CASINO, RAIFFEISEN, SOVIET_LOTTO, TERMINAL, CYBERPUNK, COFFEE_HOUSE, MINIMALISM, FIELD_OF_WONDERS)
     }
 }

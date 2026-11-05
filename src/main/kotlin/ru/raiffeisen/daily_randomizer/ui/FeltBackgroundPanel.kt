@@ -44,6 +44,21 @@ class FeltBackgroundPanel(layout: java.awt.LayoutManager?) : JPanel(layout) {
             layer.color = CasinoTheme.gold
             layer.composite = java.awt.AlphaComposite.SrcOver.derive(0.08f)
             when (CasinoTheme.current.backgroundPattern) {
+                BackgroundPattern.DOS_BRICKS -> {
+                    layer.composite = java.awt.AlphaComposite.SrcOver
+                    layer.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
+                    for (y in 0..h step 24) {
+                        val offset = if (y / 24 % 2 == 0) 0 else -32
+                        for (x in offset..w step 64) {
+                            layer.color = java.awt.Color(0x41415C)
+                            layer.fillRect(x + 2, y + 2, 60, 20)
+                            layer.color = java.awt.Color(0x555570)
+                            layer.drawLine(x + 2, y + 2, x + 61, y + 2)
+                            layer.color = java.awt.Color(0x19192B)
+                            layer.drawLine(x + 2, y + 22, x + 62, y + 22)
+                        }
+                    }
+                }
                 BackgroundPattern.LOTTO -> {
                     layer.font = java.awt.Font(java.awt.Font.SERIF, java.awt.Font.BOLD, 18)
                     for (y in 24..h step 76) for (x in 24..w step 76) {

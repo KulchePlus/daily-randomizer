@@ -64,6 +64,12 @@ class MainFrame(
         contentPane.add(root, BorderLayout.CENTER)
         root.add(createSettingsCorner(), BorderLayout.NORTH)
         root.add(createCenterPanel(), BorderLayout.CENTER)
+        if (CasinoTheme.current.id == AppTheme.FIELD_OF_WONDERS.id) {
+            root.add(JPanel(FlowLayout(FlowLayout.RIGHT, 12, 6)).apply {
+                isOpaque = false
+                add(YakubovichPortrait())
+            }, BorderLayout.SOUTH)
+        }
 
         val winner = lastWinner
         if (winner == null) {
@@ -74,6 +80,12 @@ class MainFrame(
             showPostSpinButtons()
         }
         contentPane.revalidate()
+        // Reserve the controls' height even before the post-spin button is shown.
+        val required = preferredSize
+        minimumSize = java.awt.Dimension(maxOf(560, required.width), maxOf(400, required.height + 60))
+        if (width < minimumSize.width || height < minimumSize.height) {
+            setSize(maxOf(width, minimumSize.width), maxOf(height, minimumSize.height))
+        }
         contentPane.repaint()
     }
 

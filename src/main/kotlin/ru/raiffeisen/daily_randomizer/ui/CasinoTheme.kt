@@ -16,7 +16,7 @@ import javax.swing.SwingConstants
 object CasinoTheme {
 
     /** Текущая тема приложения. */
-    var current: AppTheme = AppTheme.CASINO
+    var current: AppTheme = ThemeSettings().load()
 
     // Сукно игрового стола
     val feltDark: Color get() = current.feltDark

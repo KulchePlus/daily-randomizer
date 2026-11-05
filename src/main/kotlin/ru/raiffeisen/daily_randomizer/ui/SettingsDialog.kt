@@ -406,6 +406,7 @@ class SettingsDialog(
 
         AppTheme.ALL.forEach { theme ->
             tilesPanel.add(createThemeTile(theme) {
+                ThemeSettings().save(theme)
                 CasinoTheme.current = theme
                 refreshTheme()
                 onThemeChanged()
