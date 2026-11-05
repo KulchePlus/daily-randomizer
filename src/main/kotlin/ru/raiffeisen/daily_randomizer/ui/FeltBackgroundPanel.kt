@@ -47,17 +47,7 @@ class FeltBackgroundPanel(layout: java.awt.LayoutManager?) : JPanel(layout) {
                 BackgroundPattern.DOS_BRICKS -> {
                     layer.composite = java.awt.AlphaComposite.SrcOver
                     layer.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
-                    for (y in 0..h step 24) {
-                        val offset = if (y / 24 % 2 == 0) 0 else -32
-                        for (x in offset..w step 64) {
-                            layer.color = java.awt.Color(0x41415C)
-                            layer.fillRect(x + 2, y + 2, 60, 20)
-                            layer.color = java.awt.Color(0x555570)
-                            layer.drawLine(x + 2, y + 2, x + 61, y + 2)
-                            layer.color = java.awt.Color(0x19192B)
-                            layer.drawLine(x + 2, y + 22, x + 62, y + 22)
-                        }
-                    }
+                    paintDosStoneWall(layer, w, h)
                 }
                 BackgroundPattern.LOTTO -> {
                     layer.font = java.awt.Font(java.awt.Font.SERIF, java.awt.Font.BOLD, 18)
@@ -95,6 +85,45 @@ class FeltBackgroundPanel(layout: java.awt.LayoutManager?) : JPanel(layout) {
                 else -> Unit
             }
         } finally { layer.dispose() }
+    }
+
+    /** Flat VGA stone faces with stepped outlines, matching the DOS reference. */
+    private fun paintDosStoneWall(g: Graphics2D, w: Int, h: Int) {
+        val random = kotlin.random.Random(1993)
+        val floorY = (h * 0.55).toInt()
+        g.color = java.awt.Color(0x0000AA)
+        g.fillRect(0, 0, w, floorY)
+        var y = -8
+        while (y < floorY) {
+            val rowHeight = 36
+            var x = if ((y + 8) / rowHeight % 2 == 0) -18 else -46
+            while (x < w) {
+                val stoneWidth = random.nextInt(42, 70)
+                val left = x + 4
+                val right = x + stoneWidth - 4
+                val top = y + 4
+                val bottom = minOf(y + rowHeight - 3, floorY - 1)
+                val shape = java.awt.Polygon(
+                    intArrayOf(left + 4, right - 5, right - 5, right, right - 2, right - 2, left + 5, left + 5, left, left + 2),
+                    intArrayOf(top, top + 1, top + 5, top + 5, bottom - 5, bottom, bottom - 1, bottom - 4, bottom - 4, top + 5),
+                    10,
+                )
+                g.color = java.awt.Color(0x000080)
+                g.fillPolygon(shape)
+                g.stroke = BasicStroke(2f)
+                g.color = java.awt.Color(0x5555BB)
+                g.drawPolygon(shape)
+                // A few flat, dark joints rather than noise across the stone faces.
+                g.color = java.awt.Color(0x000040)
+                g.drawLine(left + 7, bottom + 1, right - 3, bottom + 1)
+                x += stoneWidth
+            }
+            y += rowHeight
+        }
+        g.color = java.awt.Color(0xAAAAAA)
+        g.fillRect(0, floorY, w, h - floorY)
+        g.color = java.awt.Color(0x303030)
+        g.fillRect(0, floorY, w, 2)
     }
 
     /** Виньетка по краям — стиль казино. */

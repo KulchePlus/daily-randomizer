@@ -60,48 +60,50 @@ class ParticipantService(private val storage: ParticipantStorage) {
      */
     fun addParticipant(name: String) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) {
-            throw IllegalArgumentException("Имя не может быть пустым")
+        require(trimmed.isNotEmpty()) { "Имя не может быть пустым" }
+        storage.updateActiveParticipants { participants ->
+            require(participants.none { it.name.equals(trimmed, ignoreCase = true) }) {
+                "Участник уже есть в списке: $trimmed"
+            }
+            participants + Participant(trimmed)
         }
-        val participants = storage.load()
-        if (participants.any { it.name.equals(trimmed, ignoreCase = true) }) {
-            throw IllegalArgumentException("Участник \"$trimmed\" уже есть в списке")
-        }
-        storage.save(participants + Participant(trimmed))
     }
 
     fun removeParticipant(name: String) {
-        val updated = storage.load().filterNot { it.name.equals(name, ignoreCase = true) }
-        storage.save(updated)
+        storage.updateActiveParticipants { participants ->
+            participants.filterNot { it.name.equals(name, ignoreCase = true) }
+        }
     }
 
-    /**
-     * Обновляет флаг участия в пуле для участника с именем [name].
-     */
     fun setInPool(name: String, inPool: Boolean) {
-        val updated = storage.load().map {
-            if (it.name.equals(name, ignoreCase = true)) it.copy(inPool = inPool) else it
+        storage.updateActiveParticipants { participants ->
+            participants.map {
+                if (it.name.equals(name, ignoreCase = true)) it.copy(inPool = inPool) else it
+            }
         }
-        storage.save(updated)
     }
 
     /**
      * Добавляет всех участников в пул.
      */
     fun addAllToPool() {
-        storage.save(storage.load().map { it.copy(inPool = true) })
+        setAllInPool(true)
     }
 
     /**
      * Убирает всех участников из пула.
      */
     fun removeAllFromPool() {
-        storage.save(storage.load().map { it.copy(inPool = false) })
+        setAllInPool(false)
     }
 
-    /**
-     * Убирает участника из пула (после проведения дейли или перекрутки).
-     */
+    private fun setAllInPool(inPool: Boolean) {
+        storage.updateActiveParticipants { participants ->
+            participants.map { it.copy(inPool = inPool) }
+        }
+    }
+
+    /** Убирает участника из пула после проведения дейли. */
     fun removeFromPool(name: String) {
         setInPool(name, false)
     }
@@ -109,5 +111,5 @@ class ParticipantService(private val storage: ParticipantStorage) {
     /**
      * Возвращает случайного участника из пула или null, если пул пуст.
      */
-    fun pickRandom(): Participant? = getPool().randomOrNull()
+    fun pickRandom(pool: List<Participant> = getPool()): Participant? = pool.randomOrNull()
 }

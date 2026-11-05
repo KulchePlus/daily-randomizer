@@ -4,34 +4,10 @@ import ru.raiffeisen.daily_randomizer.service.Participant
 import ru.raiffeisen.daily_randomizer.service.ParticipantService
 import ru.raiffeisen.daily_randomizer.service.TeamProfile
 import ru.raiffeisen.daily_randomizer.service.UpdateController
-import javax.swing.JComboBox
-import java.awt.BorderLayout
-import java.awt.Color
-import java.awt.Component
-import java.awt.FlowLayout
-import java.awt.Font
-import java.awt.FontMetrics
-import java.awt.Window
-import java.awt.Graphics
-import java.awt.Graphics2D
-import java.awt.Rectangle
+import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.BorderFactory
-import javax.swing.DefaultListModel
-import javax.swing.JButton
-import javax.swing.JCheckBox
-import javax.swing.JDialog
-import javax.swing.JLabel
-import javax.swing.JList
-import javax.swing.JOptionPane
-import javax.swing.JPanel
-import javax.swing.JScrollPane
-import javax.swing.JTextField
-import javax.swing.ListCellRenderer
-import javax.swing.ListSelectionModel
-import javax.swing.SwingConstants
-import javax.swing.UIManager
+import javax.swing.*
 
 /**
  * Диалог настроек с вкладками: «Участники» (список и пул) и «Тема» (выбор стиля).
@@ -84,6 +60,7 @@ class SettingsDialog(
                 if (index < 0) return
                 val participant = listModel.get(index) ?: return
                 val cellBounds = list.getCellBounds(index, index) ?: return
+                if (!cellBounds.contains(event.point)) return
                 val clickX = event.point.x - cellBounds.x
                 if (clickX <= CHECKBOX_ZONE_WIDTH) {
                     participantService.setInPool(participant.name, !participant.inPool)
@@ -105,7 +82,7 @@ class SettingsDialog(
         // Свои вкладки на кнопках + CardLayout: Aqua (macOS) рисует JTabbedPane
         // по-своему (белый фон, серый текст) и игнорирует часть настроек —
         // полностью управляемая отрисовка надёжнее.
-        val contentCards = JPanel(java.awt.CardLayout())
+        val contentCards = JPanel(CardLayout())
         contentCards.isOpaque = false
         contentCards.add(createParticipantsTab(), TAB_PARTICIPANTS)
         contentCards.add(createThemeTab(), TAB_THEME)
@@ -118,7 +95,7 @@ class SettingsDialog(
 
         // Нижняя панель тоже на CardLayout: BorderLayout хранит только один
         // компонент в CENTER — вторая панель вытеснялась и кнопки пропадали
-        val southPanel = JPanel(java.awt.CardLayout())
+        val southPanel = JPanel(CardLayout())
         southPanel.isOpaque = false
         southPanel.add(participantsButtons, TAB_PARTICIPANTS)
         southPanel.add(closeButtonOnly, TAB_THEME)
@@ -132,8 +109,8 @@ class SettingsDialog(
 
         fun selectTab(tab: String) {
             selectedTab = tab
-            (contentCards.layout as java.awt.CardLayout).show(contentCards, tab)
-            (southPanel.layout as java.awt.CardLayout).show(southPanel, tab)
+            (contentCards.layout as CardLayout).show(contentCards, tab)
+            (southPanel.layout as CardLayout).show(southPanel, tab)
             val onParticipants = tab == TAB_PARTICIPANTS
             participantsTabButton.isSelected = onParticipants
             themeTabButton.isSelected = tab == TAB_THEME
@@ -146,7 +123,7 @@ class SettingsDialog(
         updatesTabButton.addActionListener { selectTab(TAB_UPDATES) }
         subscriptionTabButton.addActionListener { selectTab(TAB_SUBSCRIPTION) }
 
-        val tabHeader = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 4)).apply {
+        val tabHeader = JPanel(FlowLayout(FlowLayout.LEFT, 4, 4)).apply {
             isOpaque = false
             border = BorderFactory.createEmptyBorder(8, 12, 0, 12)
             add(participantsTabButton)
@@ -163,10 +140,12 @@ class SettingsDialog(
 
         // Ширина окна — по фактической ширине панели кнопок + поля,
         // чтобы все кнопки помещались в один ряд при любом шрифте системы
-        pack()
-        val buttonsWidth = participantsButtons.preferredSize.width
-        setSize(maxOf(width, buttonsWidth + 32, tabHeader.preferredSize.width + 24), maxOf(height, 460))
-        setLocationRelativeTo(owner)
+        if (!isVisible) {
+            pack()
+            val buttonsWidth = participantsButtons.preferredSize.width
+            setSize(maxOf(width, buttonsWidth + 32, tabHeader.preferredSize.width + 24), maxOf(height, 460))
+            setLocationRelativeTo(owner)
+        }
 
         reloadParticipants()
     }
@@ -178,13 +157,12 @@ class SettingsDialog(
         val button = JButton(title)
         CasinoTheme.styleSmallButton(button)
         button.isFocusable = false
-        button.addActionListener {
-            // Состояние selected управляется в selectTab — здесь ничего не делаем
-        }
         button.setUI(object : javax.swing.plaf.basic.BasicButtonUI() {
-            override fun paint(g: Graphics, c: javax.swing.JComponent) {
+            override fun paint(g: Graphics, c: JComponent) {
                 val g2 = g as Graphics2D
-                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+                g2.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON
+                )
                 val b = c.bounds
                 val selected = (c as JButton).isSelected
                 g2.color = if (selected) CasinoTheme.felt else CasinoTheme.feltDeepest
@@ -231,7 +209,7 @@ class SettingsDialog(
                 if (updates.release == null) updates.checkForUpdates() else updates.update()
             }
         }
-        val status = javax.swing.JTextArea().apply {
+        val status = JTextArea().apply {
             isEditable = false
             isOpaque = false
             lineWrap = true
@@ -240,9 +218,8 @@ class SettingsDialog(
             font = CasinoTheme.smallButtonFont
             rows = 4
         }
-        val explanation = javax.swing.JTextArea(
-            "При запуске приложение проверяет и скачивает обновления. " +
-                "Для установки нажмите кнопку обновления — приложение перезапустится.",
+        val explanation = JTextArea(
+            "При запуске приложение проверяет и скачивает обновления. " + "Для установки нажмите кнопку обновления — приложение перезапустится.",
         ).apply {
             isEditable = false
             isOpaque = false
@@ -254,11 +231,11 @@ class SettingsDialog(
         }
         val controls = JPanel().apply {
             isOpaque = false
-            layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
             listOf(automatic, explanation, action, status).forEach {
-                it.alignmentX = Component.LEFT_ALIGNMENT
+                it.alignmentX = LEFT_ALIGNMENT
                 add(it)
-                add(javax.swing.Box.createVerticalStrut(12))
+                add(Box.createVerticalStrut(12))
             }
         }
         unsubscribeUpdates?.invoke()
@@ -329,8 +306,9 @@ class SettingsDialog(
         val createButton = JButton("Создать").apply {
             CasinoTheme.styleSmallButton(this)
             addActionListener {
-                val name = JOptionPane.showInputDialog(this@SettingsDialog, "Название команды:", "Новая команда", JOptionPane.PLAIN_MESSAGE)
-                    ?: return@addActionListener
+                val name = JOptionPane.showInputDialog(
+                    this@SettingsDialog, "Название команды:", "Новая команда", JOptionPane.PLAIN_MESSAGE
+                ) ?: return@addActionListener
                 profileAction {
                     participantService.createProfile(name)
                     onProfileChanged()
@@ -399,7 +377,7 @@ class SettingsDialog(
         val tab = JPanel(BorderLayout())
         tab.isOpaque = false
 
-        val tilesPanel = JPanel(java.awt.GridLayout(0, 2, 16, 16)).apply {
+        val tilesPanel = JPanel(GridLayout(0, 2, 16, 16)).apply {
             isOpaque = false
             border = BorderFactory.createEmptyBorder(12, 12, 12, 12)
         }
@@ -414,12 +392,12 @@ class SettingsDialog(
         }
 
         val scrollPane = JScrollPane(tilesPanel)
-        scrollPane.preferredSize = java.awt.Dimension(488, 350)
+        scrollPane.preferredSize = Dimension(488, 350)
         scrollPane.border = null
         scrollPane.isOpaque = false
         scrollPane.viewport.isOpaque = false
-        scrollPane.verticalScrollBarPolicy = javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-        scrollPane.horizontalScrollBarPolicy = javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+        scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         scrollPane.verticalScrollBar.unitIncrement = 24
 
         tab.add(scrollPane, BorderLayout.CENTER)
@@ -441,18 +419,20 @@ class SettingsDialog(
         button.foreground = CasinoTheme.textLight
         button.isContentAreaFilled = false
         button.isFocusPainted = true
-        button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
-        button.border = BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(
-            if (selected) CasinoTheme.gold else CasinoTheme.goldDark,
-            if (selected) 3 else 1,
-        ), BorderFactory.createEmptyBorder(6, 2, 6, 2))
+        button.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+        button.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(
+                if (selected) CasinoTheme.gold else CasinoTheme.goldDark,
+                if (selected) 3 else 1,
+            ), BorderFactory.createEmptyBorder(6, 2, 6, 2)
+        )
         button.toolTipText = "Выбрать тему «${theme.title}»"
         button.addActionListener { onSelect() }
 
         val tile = JPanel(BorderLayout(0, 6)).apply {
             isOpaque = false
             add(button, BorderLayout.CENTER)
-            cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         }
         return tile
     }
@@ -506,7 +486,7 @@ class SettingsDialog(
         )
         scrollPane.background = CasinoTheme.feltDark
         scrollPane.viewport.background = CasinoTheme.slotWindowBg
-        scrollPane.verticalScrollBarPolicy = javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+        scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
 
         return JPanel(BorderLayout()).apply {
             isOpaque = false

@@ -33,8 +33,6 @@ class RaifLogoComponent : JComponent() {
     }
 
     companion object {
-        /** Общий экземпляр для переиспользования. */
-        val INSTANCE = RaifLogoComponent()
 
         // Исходные контуры и цвета: https://www.raiffeisen.ru/fav/icon.svg
         // Координаты SVG (viewBox 0 0 32 32) сохранены без изменений.

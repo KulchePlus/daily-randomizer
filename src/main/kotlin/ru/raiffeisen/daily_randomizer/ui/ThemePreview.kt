@@ -8,7 +8,11 @@ import javax.swing.JButton
 
 /** Миниатюра из тех же компонентов, что и главное окно. Вызывается на EDT. */
 object ThemePreview {
-    fun create(theme: AppTheme): ImageIcon {
+    private val cache = mutableMapOf<AppTheme, ImageIcon>()
+
+    fun create(theme: AppTheme): ImageIcon = cache.getOrPut(theme) { render(theme) }
+
+    private fun render(theme: AppTheme): ImageIcon {
         val previous = CasinoTheme.current
         try {
             CasinoTheme.current = theme

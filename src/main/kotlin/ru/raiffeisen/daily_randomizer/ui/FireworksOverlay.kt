@@ -5,6 +5,8 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import javax.swing.JComponent
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Полноэкранный оверлей салюта поверх всего окна (glass pane).
@@ -97,8 +99,8 @@ class FireworksOverlay : JComponent() {
 
             g2.composite = java.awt.AlphaComposite.SrcOver.derive(alpha.toFloat())
             particles.forEach { p ->
-                val px = cx + radius * p.speed * Math.cos(p.angle)
-                val py = cy + radius * p.speed * Math.sin(p.angle)
+                val px = cx + radius * p.speed * cos(p.angle)
+                val py = cy + radius * p.speed * sin(p.angle)
                 g2.color = color
                 g2.fillRect(px.toInt(), py.toInt(), 4, 4)
             }

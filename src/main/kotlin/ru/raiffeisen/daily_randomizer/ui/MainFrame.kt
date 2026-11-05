@@ -3,7 +3,6 @@ package ru.raiffeisen.daily_randomizer.ui
 import ru.raiffeisen.daily_randomizer.service.ParticipantService
 import ru.raiffeisen.daily_randomizer.service.UpdateController
 import java.awt.BorderLayout
-import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
@@ -36,9 +35,6 @@ class MainFrame(
         // pack() вместо фиксированного setSize: на Windows при масштабировании DPI
         // шрифты занимают больше пикселей, и при фиксированном размере контент
         // не влезал — GridBagLayout сплющивал барабан в полоску
-        pack()
-        setSize(maxOf(width, 560), maxOf(height, 400))
-        setLocationRelativeTo(null)
 
         // Листенеры регистрируются ОДИН раз: buildContent() вызывается при каждой
         // смене темы, а кнопки — поля. Повторный addActionListener накапливал бы
@@ -47,6 +43,10 @@ class MainFrame(
         conductButton.addActionListener { onConductClicked() }
 
         buildContent()
+        pack()
+        minimumSize = java.awt.Dimension(maxOf(560, width), maxOf(400, height))
+        size = minimumSize
+        setLocationRelativeTo(null)
 
         // Салют поверх всего окна: glass pane не перехватывает клики
         rootPane.glassPane = fireworksOverlay
@@ -64,12 +64,6 @@ class MainFrame(
         contentPane.add(root, BorderLayout.CENTER)
         root.add(createSettingsCorner(), BorderLayout.NORTH)
         root.add(createCenterPanel(), BorderLayout.CENTER)
-        if (CasinoTheme.current.id == AppTheme.FIELD_OF_WONDERS.id) {
-            root.add(JPanel(FlowLayout(FlowLayout.RIGHT, 12, 6)).apply {
-                isOpaque = false
-                add(YakubovichPortrait())
-            }, BorderLayout.SOUTH)
-        }
 
         val winner = lastWinner
         if (winner == null) {
@@ -80,12 +74,6 @@ class MainFrame(
             showPostSpinButtons()
         }
         contentPane.revalidate()
-        // Reserve the controls' height even before the post-spin button is shown.
-        val required = preferredSize
-        minimumSize = java.awt.Dimension(maxOf(560, required.width), maxOf(400, required.height + 60))
-        if (width < minimumSize.width || height < minimumSize.height) {
-            setSize(maxOf(width, minimumSize.width), maxOf(height, minimumSize.height))
-        }
         contentPane.repaint()
     }
 
@@ -114,23 +102,55 @@ class MainFrame(
     private fun createCenterPanel(): JPanel {
         spinButton.text = CasinoTheme.current.spinText
         CasinoTheme.styleSpinButton(spinButton)
-        CasinoTheme.styleSmallButton(conductButton)
+        CasinoTheme.styleSmallButton(conductButton, blue = true)
+        // All themes and spin states use the same button footprint.
+        spinButton.preferredSize = java.awt.Dimension(240, 60)
 
-        val panel = FeltBackgroundPanel(GridBagLayout())
+        val panel = JPanel(GridBagLayout()).apply { isOpaque = false }
         val constraints = GridBagConstraints().apply {
             gridx = 0
+            gridwidth = 3
             fill = GridBagConstraints.HORIZONTAL
             weightx = 0.7
             insets = Insets(10, 50, 10, 50)
         }
         panel.add(slotReel, constraints)
+        constraints.gridwidth = 1
+        constraints.gridx = 1
+        constraints.weightx = 1.0
         constraints.gridy = 1
         constraints.fill = GridBagConstraints.NONE
         constraints.insets = Insets(24, 0, 10, 0)
         panel.add(spinButton, constraints)
         constraints.gridy = 2
         constraints.insets = Insets(10, 0, 24, 0)
-        panel.add(conductButton, constraints)
+        val conductSlot = JPanel(java.awt.GridLayout(1, 1)).apply {
+            isOpaque = false
+            preferredSize = conductButton.preferredSize
+            minimumSize = preferredSize
+            add(conductButton)
+        }
+        panel.add(conductSlot, constraints)
+        // Equal side columns keep the buttons centred when the portrait is present.
+        val portraitSize = java.awt.Dimension(80, 80)
+        panel.add(javax.swing.Box.createRigidArea(portraitSize), GridBagConstraints().apply {
+            gridx = 0
+            gridy = 1
+            gridheight = 2
+            insets = Insets(0, 16, 0, 12)
+        })
+        val portraitSlot = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            preferredSize = portraitSize
+            minimumSize = portraitSize
+            if (CasinoTheme.current.id == AppTheme.FIELD_OF_WONDERS.id) add(YakubovichPortrait())
+        }
+        panel.add(portraitSlot, GridBagConstraints().apply {
+            gridx = 2
+            gridy = 1
+            gridheight = 2
+            insets = Insets(0, 12, 0, 16)
+        })
         return panel
     }
 
@@ -146,17 +166,14 @@ class MainFrame(
             return
         }
         if (pool.size == 1) {
-            lastWinner = pool.first().name
-            slotReel.showWinner(lastWinner!!)
-            fireworksOverlay.launch()
-            showPostSpinButtons()
+            onSpinFinished(pool.first().name)
             return
         }
         spinButton.isEnabled = false
         conductButton.isVisible = false
         spinButton.text = CasinoTheme.current.spinningText
         val names = pool.map { it.name }
-        val sequence = spinSequenceGenerator.generate(names)
+        val sequence = spinSequenceGenerator.generate(names, winner = checkNotNull(participantService.pickRandom(pool)).name)
         slotReel.setStrip(sequence)
         slotReel.setOffset(0.0)
         spinAnimator.spin(
@@ -196,6 +213,7 @@ class MainFrame(
     private fun openSettings() {
         spinAnimator.stop()
         spinButton.isEnabled = true
+        buildContent()
         SettingsDialog(
             this, participantService,
             updates = updates,
