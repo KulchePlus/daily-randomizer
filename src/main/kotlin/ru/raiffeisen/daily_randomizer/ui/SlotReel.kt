@@ -7,6 +7,7 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import javax.swing.JComponent
+import kotlin.math.abs
 
 /**
  * Барабан игрового автомата: вертикальная лента имён, прокручивающаяся сверху вниз.
@@ -154,7 +155,7 @@ class SlotReel : JComponent() {
         for (i in -2..2) {
             val index = Math.floorMod(offset.toInt() + i, size)
             val cellCenterY = centerY + (offset.toInt() + i - offset) * cellHeight
-            val distance = Math.abs(centerY - cellCenterY) / (h / 2.0)
+            val distance = abs(centerY - cellCenterY) / (h / 2.0)
             val alpha = (1.0 - distance).coerceIn(0.0, 1.0)
             g2.composite = java.awt.AlphaComposite.SrcOver.derive(alpha.toFloat())
             drawCentered(g2, strip[index], w, cellCenterY.toInt(), CasinoTheme.goldBright, CasinoTheme.reelFont)

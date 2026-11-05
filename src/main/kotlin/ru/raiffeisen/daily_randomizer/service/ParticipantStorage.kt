@@ -3,6 +3,8 @@ package ru.raiffeisen.daily_randomizer.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.StandardCopyOption
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -16,9 +18,14 @@ class ParticipantStorage(private val filePath: Path = defaultPath()) {
     fun load(): List<Participant> = loadProfiles().activeProfile().participants
 
     fun save(participants: List<Participant>) {
+        updateActiveParticipants { participants }
+    }
+
+    fun updateActiveParticipants(transform: (List<Participant>) -> List<Participant>) {
         val state = loadProfiles()
+        val updated = transform(state.activeProfile().participants)
         saveProfiles(state.copy(profiles = state.profiles.map {
-            if (it.id == state.activeProfileId) it.copy(participants = participants) else it
+            if (it.id == state.activeProfileId) it.copy(participants = updated) else it
         }))
     }
 
@@ -46,8 +53,19 @@ class ParticipantStorage(private val filePath: Path = defaultPath()) {
 
     fun saveProfiles(state: ParticipantProfiles) {
         try {
-            Files.createDirectories(filePath.toAbsolutePath().parent)
-            Files.writeString(filePath, objectMapper.writeValueAsString(state))
+            val target = filePath.toAbsolutePath()
+            Files.createDirectories(target.parent)
+            val temporary = Files.createTempFile(target.parent, "participants-", ".tmp")
+            try {
+                Files.writeString(temporary, objectMapper.writeValueAsString(state))
+                try {
+                    Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } catch (_: AtomicMoveNotSupportedException) {
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
+                }
+            } finally {
+                Files.deleteIfExists(temporary)
+            }
         } catch (e: Exception) {
             throw IllegalStateException("Не удалось сохранить файл участников: $filePath", e)
         }
